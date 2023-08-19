@@ -1,0 +1,79 @@
+```{r}
+library(tidyverse)
+library(igraph)
+library(arules)  # has a big ecosystem of packages built around it
+library(arulesViz)
+```
+
+First of all, read in the dataset and transform it to arules package format
+
+```{r}
+data <- readLines("D:/homework/machine_learning/Q8/groceries.txt")
+
+# Split items and create transaction data
+transactions <- strsplit(data, ",")
+
+# Convert to transaction format
+transactions <- as(transactions, "transactions")
+```
+
+Next on, we form the rules using apriori, with support greater than .01, confidence greater than .1 and maximum length of 5 (we do think 5 items in the basket is enough for finding possible next item)
+
+```{r}
+# Run association rule mining
+rules <- apriori(transactions, parameter = list(support=.01, confidence=.1, maxlen=5))
+
+inspect(rules)
+```
+
+We have 435 rules and we want to find rules with higher lifts, so sort the rules with decreasing lifts
+
+```{r}
+# Sort rules by lift
+rules <- sort(rules, by = "lift", decreasing = TRUE)
+
+inspect(rules)
+```
+
+Then, we form plots to find determine the thresholds for confidence and lift
+
+```{r}
+plot(rules)
+plot(rules, measure = c("support", "lift"), shading = "confidence")
+plot(rules, method='two-key plot')
+```
+
+We have 435 rules, and we want to get the top 5%, which is about 20 rules.
+
+We want to maintain a high lift and high confidence.
+
+By trial-and-error, we set the lift threshold to be 2 and confidence threshold to be 0.45,
+
+and we get 19 rules from this combination.
+
+```{r}
+inspect(subset(rules, subset=lift > 2 & confidence > 0.45))
+```
+
+Finally, let's visualize the rules determined above
+
+```{r}
+basket_graph = associations2igraph(subset(rules, lift > 2 & confidence > 0.45), associationsAsNodes = FALSE) 
+
+igraph::write_graph(basket_graph, file='basket.graphml', format = "graphml")
+```
+
+![Caption for the picture.](D:/homework/machine_learning/Q8/basket_rules.png)
+
+# Conclusion
+
+With a threshold of life > 2 and confidence > 0.45, we ended up with 19 rules, with RHS either other vegetables or whole milk.
+
+Based on the plots and rules, when people already buy vegetables (root vegetables, onions) and fruits (citrus fruit, tropical fruit), they will have a high chance buying other vegetables. 
+
+Also, when people already milk-related products (curd, yogurt, butter), they will have a high chance buying whole milk.
+
+The above rules do make sense because people tend to buy similar things together.
+
+A mixed of vegetables, fruits and milk-related products will also increase the chance of buying other vegetables or whole milk.This also makes sense because these are the most common groceries (eggs, milk, vegetables, fruits) that people buy for daily-consumption. 
+
